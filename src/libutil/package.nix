@@ -7,7 +7,6 @@
   brotli,
   libarchive,
   libsodium,
-  nlohmann_json,
 
   # Configuration Options
 
@@ -50,7 +49,6 @@ mkMesonLibrary (finalAttrs: {
   propagatedBuildInputs = [
     boost
     libarchive
-    nlohmann_json
   ];
 
   preConfigure =

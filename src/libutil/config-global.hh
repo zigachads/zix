@@ -16,7 +16,7 @@ struct GlobalConfig : public AbstractConfig
 
     void resetOverridden() override;
 
-    nlohmann::json toJSON() override;
+    json::value *toJSON() override;
 
     std::string toKeyValue() override;
 

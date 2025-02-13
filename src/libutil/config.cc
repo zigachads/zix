@@ -1,14 +1,13 @@
+#include <numeric>
 #include "config.hh"
 #include "args.hh"
-#include "abstract-setting-to-json.hh"
 #include "environment-variables.hh"
 #include "experimental-features.hh"
+#include "json.hh"
 #include "util.hh"
 #include "file-system.hh"
 
 #include "config-impl.hh"
-
-#include <nlohmann/json.hpp>
 
 #include "strings.hh"
 
@@ -191,12 +190,12 @@ void Config::resetOverridden()
         s.second.setting->overridden = false;
 }
 
-nlohmann::json Config::toJSON()
+json::value *Config::toJSON()
 {
-    auto res = nlohmann::json::object();
+    auto res = nix_libutil_json_object_new();
     for (const auto & s : _settings)
         if (!s.second.isAlias)
-            res.emplace(s.first, s.second.setting->toJSON());
+            nix_libutil_json_object_set(res, s.first.c_str(), s.second.setting->toJSON());
     return res;
 }
 
@@ -236,16 +235,23 @@ AbstractSetting::~AbstractSetting()
     assert(created == 123);
 }
 
-nlohmann::json AbstractSetting::toJSON()
+json::value *AbstractSetting::toJSON()
 {
-    return nlohmann::json(toJSONObject());
+    return json::from_map(toJSONObject());
 }
 
-std::map<std::string, nlohmann::json> AbstractSetting::toJSONObject() const
+std::map<std::string, json::value *> AbstractSetting::toJSONObject() const
 {
-    std::map<std::string, nlohmann::json> obj;
-    obj.emplace("description", description);
-    obj.emplace("aliases", aliases);
+    std::map<std::string, json::value *> obj;
+    obj.emplace("description", nix_libutil_json_string_new(description.c_str()));
+    json::value *json_aliases = nix_libutil_json_list_new();
+
+    for (auto const &alias : aliases) {
+        nix_libutil_json_list_insert(json_aliases, nix_libutil_json_string_new(alias.c_str()));
+    }
+
+    obj.emplace("aliases", json_aliases);
+
     if (experimentalFeature)
         obj.emplace("experimentalFeature", *experimentalFeature);
     else

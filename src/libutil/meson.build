@@ -92,9 +92,6 @@ deps_private += brotli
 
 configdata.set('HAVE_LIBCPUID', get_option('cpuid').to_int())
 
-nlohmann_json = dependency('nlohmann_json', version : '>= 3.9')
-deps_public += nlohmann_json
-
 subdir('nix-meson-build-support/zig')
 
 cxx = meson.get_compiler('cpp')
@@ -135,7 +132,6 @@ sources = files(
   'git.cc',
   'hash.cc',
   'hilite.cc',
-  'json-utils.cc',
   'logging.cc',
   'memory-source-accessor.cc',
   'position.cc',
@@ -165,7 +161,6 @@ if not cxx.has_header('widechar_width.h', required : false)
 endif
 
 headers = [config_h] + files(
-  'abstract-setting-to-json.hh',
   'ansicolor.hh',
   'archive.hh',
   'args.hh',
@@ -200,8 +195,6 @@ headers = [config_h] + files(
   'git.hh',
   'hash.hh',
   'hilite.hh',
-  'json-impls.hh',
-  'json-utils.hh',
   'logging.hh',
   'lru-cache.hh',
   'memory-source-accessor.hh',
@@ -239,6 +232,7 @@ headers = [config_h] + files(
   'util.hh',
   'variant-wrapper.hh',
   'xml-writer.hh',
+  'json.hh',
 )
 
 if host_machine.system() == 'linux'

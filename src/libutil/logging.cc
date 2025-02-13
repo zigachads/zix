@@ -9,7 +9,6 @@
 
 #include <atomic>
 #include <sstream>
-#include <nlohmann/json.hpp>
 #include <iostream>
 
 namespace nix {
@@ -151,18 +150,14 @@ Activity::Activity(Logger & logger, Verbosity lvl, ActivityType type,
     logger.startActivity(id, lvl, type, s, fields, parent);
 }
 
-void to_json(nlohmann::json & json, std::shared_ptr<Pos> pos)
+void to_json(json::value * json, std::shared_ptr<Pos> pos)
 {
     if (pos) {
-        json["line"] = pos->line;
-        json["column"] = pos->column;
+        nix_libutil_json_object_set_integer(json, "line", pos->line);
+        nix_libutil_json_object_set_integer(json, "column", pos->column);
         std::ostringstream str;
         pos->print(str, true);
-        json["file"] = str.str();
-    } else {
-        json["line"] = nullptr;
-        json["column"] = nullptr;
-        json["file"] = nullptr;
+        nix_libutil_json_object_set_string(json, "file", str.str().c_str());
     }
 }
 
@@ -175,30 +170,31 @@ struct JSONLogger : Logger {
         return true;
     }
 
-    void addFields(nlohmann::json & json, const Fields & fields)
+    void addFields(json::value * json, const Fields & fields)
     {
         if (fields.empty()) return;
-        auto & arr = json["fields"] = nlohmann::json::array();
+        nix_libutil_json_object_set(json, "fields", nix_libutil_json_list_new());
+        auto *arr = nix_libutil_json_object_get(json, "fields");
         for (auto & f : fields)
             if (f.type == Logger::Field::tInt)
-                arr.push_back(f.i);
+                nix_libutil_json_list_insert(arr, nix_libutil_json_integer_new(f.i));
             else if (f.type == Logger::Field::tString)
-                arr.push_back(f.s);
+                nix_libutil_json_list_insert(arr, nix_libutil_json_string_new(f.s.c_str()));
             else
                 unreachable();
     }
 
-    void write(const nlohmann::json & json)
+    void write(const json::value * json)
     {
-        prevLogger.log(lvlError, "@nix " + json.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
+        //FIXME:prevLogger.log(lvlError, "@nix " + json.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
     }
 
     void log(Verbosity lvl, std::string_view s) override
     {
-        nlohmann::json json;
-        json["action"] = "msg";
-        json["level"] = lvl;
-        json["msg"] = s;
+        json::value * json = nix_libutil_json_object_new();
+        nix_libutil_json_object_set_string(json, "action", "msg");
+        nix_libutil_json_object_set_integer(json, "level", lvl);
+        nix_libutil_json_object_set_string(json, "msg", s.data());
         write(json);
     }
 
@@ -207,23 +203,23 @@ struct JSONLogger : Logger {
         std::ostringstream oss;
         showErrorInfo(oss, ei, loggerSettings.showTrace.get());
 
-        nlohmann::json json;
-        json["action"] = "msg";
-        json["level"] = ei.level;
-        json["msg"] = oss.str();
-        json["raw_msg"] = ei.msg.str();
+        json::value *json = nix_libutil_json_object_new();
+        nix_libutil_json_object_set_string(json, "action", "msg");
+        nix_libutil_json_object_set_integer(json, "level", ei.level);
+        nix_libutil_json_object_set_string(json, "msg", oss.str().c_str());
+        nix_libutil_json_object_set_string(json, "raw_msg", ei.msg.str().c_str());
         to_json(json, ei.pos);
 
         if (loggerSettings.showTrace.get() && !ei.traces.empty()) {
-            nlohmann::json traces = nlohmann::json::array();
+            json::value * traces = nix_libutil_json_list_new();
             for (auto iter = ei.traces.rbegin(); iter != ei.traces.rend(); ++iter) {
-                nlohmann::json stackFrame;
-                stackFrame["raw_msg"] = iter->hint.str();
+                json::value * stackFrame = nix_libutil_json_object_new();
+                nix_libutil_json_object_set_string(stackFrame, "raw_msg", iter->hint.str().c_str());
                 to_json(stackFrame, iter->pos);
-                traces.push_back(stackFrame);
+                nix_libutil_json_list_insert(traces, stackFrame);
             }
 
-            json["trace"] = traces;
+            nix_libutil_json_object_set(json, "trace", traces);
         }
 
         write(json);
@@ -232,13 +228,13 @@ struct JSONLogger : Logger {
     void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
         const std::string & s, const Fields & fields, ActivityId parent) override
     {
-        nlohmann::json json;
-        json["action"] = "start";
-        json["id"] = act;
-        json["level"] = lvl;
-        json["type"] = type;
-        json["text"] = s;
-        json["parent"] = parent;
+        json::value * json = nix_libutil_json_object_new();
+        nix_libutil_json_object_set_string(json, "action", "start");
+        nix_libutil_json_object_set_integer(json, "id", act);
+        nix_libutil_json_object_set_integer(json, "level", lvl);
+        nix_libutil_json_object_set_integer(json, "type", type);
+        nix_libutil_json_object_set_string(json, "text", s.c_str());
+        nix_libutil_json_object_set_integer(json, "parent", parent);
         addFields(json, fields);
         write(json);
     }

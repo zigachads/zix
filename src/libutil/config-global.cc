@@ -1,7 +1,5 @@
 #include "config-global.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 bool GlobalConfig::set(const std::string & name, const std::string & value)
@@ -27,11 +25,11 @@ void GlobalConfig::resetOverridden()
         config->resetOverridden();
 }
 
-nlohmann::json GlobalConfig::toJSON()
+json::value *GlobalConfig::toJSON()
 {
-    auto res = nlohmann::json::object();
+    auto res = nix_libutil_json_object_new();
     for (const auto & config : *configRegistrations)
-        res.update(config->toJSON());
+        nix_libutil_json_object_update(res, config->toJSON());
     return res;
 }
 

@@ -4,7 +4,6 @@
 #include "environment-variables.hh"
 #include "signals.hh"
 #include "users.hh"
-#include "json-utils.hh"
 
 #include <fstream>
 #include <string>
@@ -494,44 +493,47 @@ bool Args::processArgs(const Strings & args, bool finish)
     return res;
 }
 
-nlohmann::json Args::toJSON()
+json::value *Args::toJSON()
 {
-    auto flags = nlohmann::json::object();
+    auto flags = nix_libutil_json_object_new();
 
     for (auto & [name, flag] : longFlags) {
-        auto j = nlohmann::json::object();
-        j["hiddenCategory"] = hiddenCategories.count(flag->category) > 0;
+        auto j = nix_libutil_json_object_new();
+        nix_libutil_json_object_set_integer(j, "hiddenCategory", hiddenCategories.count(flag->category) > 0);
         if (flag->aliases.count(name)) continue;
         if (flag->shortName)
-            j["shortName"] = std::string(1, flag->shortName);
+            nix_libutil_json_object_set_string(j, "shortName", std::string(1, flag->shortName).c_str());
         if (flag->description != "")
-            j["description"] = trim(flag->description);
-        j["category"] = flag->category;
+            nix_libutil_json_object_set_string(j, "description", trim(flag->description).c_str());
+        nix_libutil_json_object_set_string(j, "category", flag->category.c_str());
         if (flag->handler.arity != ArityAny)
-            j["arity"] = flag->handler.arity;
+            nix_libutil_json_object_set_integer(j, "arity", flag->handler.arity);
         if (!flag->labels.empty())
-            j["labels"] = flag->labels;
-        j["experimental-feature"] = flag->experimentalFeature;
-        flags[name] = std::move(j);
+            json::set_strings(j, "arity", flag->labels);
+
+        if (flag->experimentalFeature.has_value())
+            nix_libutil_json_object_set_string(j, "experimental-feature", showExperimentalFeature(flag->experimentalFeature.value()).data());
+
+        nix_libutil_json_object_set(flags, name.c_str(), std::move(j));
     }
 
-    auto args = nlohmann::json::array();
+    auto args = nix_libutil_json_list_new();
 
     for (auto & arg : expectedArgs) {
-        auto j = nlohmann::json::object();
-        j["label"] = arg.label;
-        j["optional"] = arg.optional;
+        auto j = nix_libutil_json_object_new();
+        nix_libutil_json_object_set_string(j, "label", arg.label.c_str());
+        nix_libutil_json_object_set_bool(j, "optional", arg.optional);
         if (arg.handler.arity != ArityAny)
-            j["arity"] = arg.handler.arity;
-        args.push_back(std::move(j));
+            nix_libutil_json_object_set_integer(j, "arity", arg.handler.arity);
+        nix_libutil_json_list_insert(args, std::move(j));
     }
 
-    auto res = nlohmann::json::object();
-    res["description"] = trim(description());
-    res["flags"] = std::move(flags);
-    res["args"] = std::move(args);
+    auto res = nix_libutil_json_object_new();
+    nix_libutil_json_object_set_string(res, "description", trim(description()).c_str());
+    nix_libutil_json_object_set(res, "flags", std::move(flags));
+    nix_libutil_json_object_set(res, "args", std::move(args));
     auto s = doc();
-    if (s != "") res.emplace("doc", stripIndentation(s));
+    if (s != "") nix_libutil_json_object_set_string(res, "doc", stripIndentation(s).c_str());
     return res;
 }
 
@@ -627,23 +629,29 @@ bool MultiCommand::processArgs(const Strings & args, bool finish)
         return Args::processArgs(args, finish);
 }
 
-nlohmann::json MultiCommand::toJSON()
+json::value *MultiCommand::toJSON()
 {
-    auto cmds = nlohmann::json::object();
+    auto cmds = nix_libutil_json_object_new();
 
     for (auto & [name, commandFun] : commands) {
         auto command = commandFun();
         auto j = command->toJSON();
-        auto cat = nlohmann::json::object();
-        cat["id"] = command->category();
-        cat["description"] = trim(categories[command->category()]);
-        cat["experimental-feature"] = command->experimentalFeature();
-        j["category"] = std::move(cat);
-        cmds[name] = std::move(j);
+        auto cat = nix_libutil_json_object_new();
+        nix_libutil_json_object_set_integer(cat, "id", command->category());
+        nix_libutil_json_object_set_string(cat, "description", trim(categories[command->category()]).c_str());
+
+        const auto &experimentalFeature = command->experimentalFeature();
+
+        if (experimentalFeature.has_value()) {
+            nix_libutil_json_object_set_string(cat, "experimental-feature", showExperimentalFeature(experimentalFeature.value()).data());
+        }
+
+        nix_libutil_json_object_set(j, "category", std::move(cat));
+        nix_libutil_json_object_set(cmds, name.c_str(), std::move(j));
     }
 
     auto res = Args::toJSON();
-    res["commands"] = std::move(cmds);
+    nix_libutil_json_object_set(res, "commands", std::move(cmds));
     return res;
 }
 

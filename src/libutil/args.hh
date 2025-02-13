@@ -7,8 +7,6 @@
 #include <memory>
 #include <optional>
 
-#include <nlohmann/json_fwd.hpp>
-
 #include "types.hh"
 #include "experimental-features.hh"
 #include "ref.hh"
@@ -321,7 +319,7 @@ public:
 
     static CompleterFun completeDir;
 
-    virtual nlohmann::json toJSON();
+    virtual json::value *toJSON();
 
     friend class MultiCommand;
 
@@ -391,7 +389,7 @@ public:
 
     bool processArgs(const Strings & args, bool finish) override;
 
-    nlohmann::json toJSON() override;
+    json::value *toJSON() override;
 
 protected:
     std::string commandName = "";

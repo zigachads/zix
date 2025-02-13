@@ -3,8 +3,7 @@
 
 #include "error.hh"
 #include "types.hh"
-
-#include <nlohmann/json_fwd.hpp>
+#include "json.hh"
 
 namespace nix {
 
@@ -63,7 +62,7 @@ std::string_view showExperimentalFeature(const ExperimentalFeature);
  *
  * See `doc/manual` for how this information is used.
  */
-nlohmann::json documentExperimentalFeatures();
+json::value *documentExperimentalFeatures();
 
 /**
  * Shorthand for `str << showExperimentalFeature(feature)`.
@@ -93,11 +92,7 @@ public:
     MissingExperimentalFeature(ExperimentalFeature missingFeature);
 };
 
-/**
- * Semi-magic conversion to and from json.
- * See the nlohmann/json readme for more details.
- */
-void to_json(nlohmann::json &, const ExperimentalFeature &);
-void from_json(const nlohmann::json &, ExperimentalFeature &);
+void to_json(json::value *, const ExperimentalFeature &);
+void from_json(const json::value *, ExperimentalFeature &);
 
 }

@@ -5,8 +5,6 @@
 #include <map>
 #include <set>
 
-#include <nlohmann/json_fwd.hpp>
-
 #include "types.hh"
 #include "experimental-features.hh"
 
@@ -91,7 +89,7 @@ public:
      * Outputs all settings to JSON
      * - out: JSONObject to write the configuration to
      */
-    virtual nlohmann::json toJSON() = 0;
+    virtual json::value *toJSON() = 0;
 
     /**
      * Outputs all settings in a key-value pair format suitable to be used as
@@ -164,7 +162,7 @@ public:
 
     void resetOverridden() override;
 
-    nlohmann::json toJSON() override;
+    json::value *toJSON() override;
 
     std::string toKeyValue() override;
 
@@ -207,9 +205,9 @@ protected:
 
     virtual std::string to_string() const = 0;
 
-    nlohmann::json toJSON();
+    json::value *toJSON();
 
-    virtual std::map<std::string, nlohmann::json> toJSONObject() const;
+    virtual std::map<std::string, json::value *> toJSONObject() const;
 
     virtual void convertToArg(Args & args, const std::string & category);
 
@@ -303,7 +301,7 @@ public:
 
     void convertToArg(Args & args, const std::string & category) override;
 
-    std::map<std::string, nlohmann::json> toJSONObject() const override;
+    std::map<std::string, json::value *> toJSONObject() const override;
 };
 
 template<typename T>

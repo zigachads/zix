@@ -4,8 +4,6 @@
 #include "error.hh"
 #include "config.hh"
 
-#include <nlohmann/json_fwd.hpp>
-
 namespace nix {
 
 typedef enum {
@@ -188,12 +186,12 @@ Logger * makeJSONLogger(Logger & prevLogger);
 /**
  * @param source A noun phrase describing the source of the message, e.g. "the builder".
  */
-std::optional<nlohmann::json> parseJSONMessage(const std::string & msg, std::string_view source);
+std::optional<json::value> parseJSONMessage(const std::string & msg, std::string_view source);
 
 /**
  * @param source A noun phrase describing the source of the message, e.g. "the builder".
  */
-bool handleJSONLogMessage(nlohmann::json & json,
+bool handleJSONLogMessage(json::value & json,
     const Activity & act, std::map<ActivityId, Activity> & activities,
     std::string_view source,
     bool trusted);

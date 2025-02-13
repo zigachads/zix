@@ -2,8 +2,6 @@
 #include "fmt.hh"
 #include "util.hh"
 
-#include "nlohmann/json.hpp"
-
 namespace nix {
 
 struct ExperimentalFeatureDetails
@@ -344,7 +342,7 @@ std::string_view showExperimentalFeature(const ExperimentalFeature tag)
     return xpFeatureDetails[(size_t)tag].name;
 }
 
-nlohmann::json documentExperimentalFeatures()
+json::value *documentExperimentalFeatures()
 {
     StringMap res;
     for (auto & xpFeature : xpFeatureDetails) {
@@ -353,7 +351,7 @@ nlohmann::json documentExperimentalFeatures()
         docOss << fmt("\nRefer to [%1% tracking issue](%2%) for feature tracking.", xpFeature.name, xpFeature.trackingUrl);
         res[std::string{xpFeature.name}] = trim(docOss.str());
     }
-    return (nlohmann::json) res;
+    return json::from_string_map(res);
 }
 
 std::set<ExperimentalFeature> parseFeatures(const std::set<std::string> & rawFeatures)
@@ -375,14 +373,14 @@ std::ostream & operator <<(std::ostream & str, const ExperimentalFeature & featu
     return str << showExperimentalFeature(feature);
 }
 
-void to_json(nlohmann::json & j, const ExperimentalFeature & feature)
+void to_json(json::value *j, const ExperimentalFeature & feature)
 {
-    j = showExperimentalFeature(feature);
+    j = nix_libutil_json_string_new(showExperimentalFeature(feature).data());
 }
 
-void from_json(const nlohmann::json & j, ExperimentalFeature & feature)
+void from_json(const json::value *j, ExperimentalFeature & feature)
 {
-    const std::string input = j;
+    const std::string input = nix_libutil_json_string_get(j);
     const auto parsed = parseExperimentalFeature(input);
 
     if (parsed.has_value())
